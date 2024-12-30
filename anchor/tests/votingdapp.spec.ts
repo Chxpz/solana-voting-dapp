@@ -91,4 +91,24 @@ describe('votingdapp', () => {
     expect(smoothCandidate.candidateVotes.toString()).toEqual("0")
 
   })
+
+  it("Should votes", async()=>{
+
+    await votingProgram.methods.vote(
+      "Smooth",
+      new BN(1)
+    ).rpc()
+
+     const [smoothAddress]= PublicKey.findProgramAddressSync(
+      [new BN(1).toArrayLike(Buffer, "le",8),
+        Buffer.from("Smooth")
+      ],
+      votingAddress
+    );
+
+    const smoothCandidate = await votingProgram.account.candidate.fetch(smoothAddress)
+  
+    expect(+smoothCandidate.candidateVotes).toEqual(1)
+  
+  })
 })
