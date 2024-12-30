@@ -7,17 +7,23 @@ const IDL = require( '../target/idl/votingdapp.json');
 const votingAddress = new PublicKey("coUnmi3oBUtwtd9fjeAvSsJssXh5A5xyPbhpewyzRVF");
 
 describe('votingdapp', () => {
-  
 
-  it('Initialize Poll', async () => {
-    const context = await startAnchor("", [{name: "votingdapp", programId: votingAddress}], []);
+  let context;
+  let provider;
+  let votingProgram: any;
 
-    const provider = new BankrunProvider(context);
+  beforeAll(async ()=>{
+    context = await startAnchor("", [{name: "votingdapp", programId: votingAddress}], []);
 
-    const votingProgram = new Program<Votingdapp>(
+    provider = new BankrunProvider(context);
+
+    votingProgram = new Program<Votingdapp>(
       IDL,
       provider,
     );
+  })
+
+  it('Initialize Poll', async () => {
 
     const pollId = new BN(1)
     const inputDescription = "What is your favorite food"
@@ -46,6 +52,43 @@ describe('votingdapp', () => {
     expect(poll.description.toString()).toEqual(inputDescription);
     expect(poll.pollStart.toNumber()).toEqual(pollStartDate.toNumber())
     expect(poll.pollEnd.toNumber()).toEqual(pollEndDate.toNumber()) 
+
+  })
+
+  it("Initialize candidate", async() =>{
+
+    await votingProgram.methods.initializeCandidate(
+      "Smooth",
+      new BN(1)
+    ).rpc()
+
+    await votingProgram.methods.initializeCandidate(
+      "Crunchy",
+      new BN(1)
+    ).rpc()
+
+    const [smoothAddress]= PublicKey.findProgramAddressSync(
+      [new BN(1).toArrayLike(Buffer, "le",8),
+        Buffer.from("Smooth")
+      ],
+      votingAddress
+    );
+
+    const [crunchyAddress] = PublicKey.findProgramAddressSync(
+      [new BN(1).toArrayLike(Buffer, "le",8),
+        Buffer.from("Crunchy")
+      ],
+      votingAddress
+    );
+
+    const crunchyCandidate = await votingProgram.account.candidate.fetch(crunchyAddress)
+    const smoothCandidate = await votingProgram.account.candidate.fetch(smoothAddress)
+
+    expect(crunchyCandidate.candidateName).toEqual("Crunchy")
+    expect(crunchyCandidate.candidateVotes.toString()).toEqual("0")
+
+    expect(smoothCandidate.candidateName).toEqual("Smooth")
+    expect(smoothCandidate.candidateVotes.toString()).toEqual("0")
 
   })
 })
